@@ -31,6 +31,25 @@ from matplotlib.widgets import Slider, TextBox
 from mpl_toolkits.mplot3d import art3d
 import matplotlib.patches as mpatches
 
+# so(3): vector to skew-symmetric matrix
+def hat_operator(omega):
+    return np.array([
+        [0, -omega[2], omega[1]],
+        [omega[2], 0, -omega[0]],
+        [-omega[1], omega[0], 0]
+    ])
+
+# maybe we need use vector omega = theta * axis
+# vector dir = axis, norm = theta
+def rodrigues_rotation_matrix(omega):
+    """Generate the Rodrigues rotation matrix for a given axis and angle."""
+    theta = np.linalg.norm(omega)
+    K = hat_operator(omega / theta)
+    # if theta is very small, use the first order approximation
+    if theta < 1e-6:
+        return np.eye(3) + K
+    R = np.eye(3) + np.sin(theta) * K + (1 - np.cos(theta)) * K @ K
+    return R
 
 def rodrigues_rotate(v, k, theta):
     """Apply Rodrigues rotation: rotate v around unit axis k by angle theta."""
@@ -153,8 +172,10 @@ class RodriguesVisualizer:
         ax.set_facecolor('#16213e')
 
         k_unit = self.k / np.linalg.norm(self.k)
-        v_rot = rodrigues_rotate(self.v, self.k, self.theta)
+        # v_rot = rodrigues_rotate(self.v, self.k, self.theta)
+        # v_rot = rodrigues_rotation_matrix(self.k, self.theta) @ self.v
 
+        v_rot = rodrigues_rotation_matrix(self.theta * self.k) @ self.v
         # Determine plot limits
         all_pts = np.array([self.v, v_rot, k_unit * 1.5, -k_unit * 0.5])
         max_range = max(np.abs(all_pts).max(), 1.2)
